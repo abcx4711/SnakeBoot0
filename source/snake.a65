@@ -1,0 +1,562 @@
+;---------------------------------------------------------------
+;  SNAKE - Version 2
+;
+;  Direct 6502 implementation of the Applesoft BASIC version.
+;
+;  Goals of Version 2:
+;
+;    - Preserve the BASIC game algorithm
+;    - Use 8-bit integer X/Y coordinates
+;    - Use 8-bit snake indexes
+;    - Use one complete page for the snake arrays
+;    - Use Apple II monitor ROM for graphics 
+;    - Optimize for code size to fit 256 bytes boot sector
+;
+;  Snake memory:
+;
+;    $3000-$30FF    SX[0..127]
+;    $3100-$31FF    SY[0..127]
+;---------------------------------------------------------------
+
+        title   "Snake Version 2"
+        code
+        org     $0801
+
+;---------------------------------------------------------------
+; Apple II hardware
+;---------------------------------------------------------------
+
+KBD             equ     $C000
+KBDSTRB         equ     $C010
+SPKR            equ     $C030
+DRVMOTOR        equ     $C0E8
+
+;---------------------------------------------------------------
+; Apple II monitor routines
+;---------------------------------------------------------------
+
+BASIC           equ     $E003
+
+PLOT            equ     $F800
+HLINE           equ     $F819
+VLINE           equ     $F828
+SCRN            equ     $F871
+
+SETGR           equ     $FB40
+
+WAIT            equ     $FCA8
+BELL            equ     $FF3A
+BELL2           equ     $FBE4
+
+PRBYTE          equ     $FDDA
+
+;---------------------------------------------------------------
+; Monitor zero-page locations
+;---------------------------------------------------------------
+
+WNDLFT          equ     $20
+WNDWDTH         equ     $21
+WNDTOP          equ     $22
+WNDBTM          equ     $23
+
+CH              equ     $24
+CV              equ     $25
+
+GBASL           equ     $26
+GBASH           equ     $27
+
+BASL            equ     $28
+BASH            equ     $29
+
+H2              equ     $2C
+V2              equ     $2D
+
+COLOR           equ     $30
+
+;---------------------------------------------------------------
+; Game variables
+;---------------------------------------------------------------
+
+DX              equ     $51
+DY              equ     $52
+
+TA              equ     $53
+HE              equ     $54
+
+GW              equ     $55
+DE              equ     $56
+
+;---------------------------------------------------------------
+; Snake arrays
+;
+; One complete 256-byte page.
+;
+;   SX[0..127] = $3000-$307F
+;   SY[0..127] = $3080-$30FF
+;---------------------------------------------------------------
+
+SX              equ     $3000
+SY              equ     $3100
+
+;---------------------------------------------------------------
+; Colors
+;---------------------------------------------------------------
+
+BLACK           equ     $00 ; Currently not used directly
+RED             equ     $11
+SNAKECOLOR      equ     $CC
+WHITE           equ     $FF ; Currently not used directly
+
+;===============================================================
+; START
+;===============================================================
+
+START
+
+;---------------------------------------------------------------
+; Turn off disk drive motor
+;---------------------------------------------------------------
+
+        lda     DRVMOTOR
+
+;===============================================================
+; INITIALIZE GRAPHICS
+;
+; BASIC:
+;
+; GR : HOME
+;===============================================================
+
+        jsr     SETGR
+
+;===============================================================
+; DRAW BORDER
+;
+; COLOR = 15
+;
+; HLIN 0,39 AT 0
+; HLIN 0,39 AT 39
+; VLIN 0,39 AT 0
+; VLIN 0,39 AT 39
+;
+; HLINE:
+;   A  = Y
+;   Y  = left X
+;   $2C = right X
+;
+; VLINE:
+;   A  = top Y
+;   Y  = X
+;   $2D = bottom Y
+;===============================================================
+
+        ldy     #$FF
+        sty     COLOR     ; should be $FF (WHITE) after SETGR
+
+        ; HLIN 0,39 AT 39       HLIN Y,H2 at A
+
+        iny            ; This sets Y to 0 from FF
+        tya            ; Set value of A to zero with single byte op
+        tax            ; Save zero in X for cheaply setting A and Y later
+
+        lda     #39
+        sta     H2
+        sta     V2     
+
+        jsr     HLINE       
+
+        ; HLIN 0,39 AT 0        A=0, Y=0
+
+        txa 
+        tay 
+        jsr     HLINE
+
+        ; Y is 39 after HLINE
+
+        ; VLIN 0,39 AT 39       VLIN A,V2 at Y
+
+        txa
+        jsr     VLINE
+
+        ; VLIN 0,39 AT 0
+
+        txa
+        tay            
+        jsr     VLINE
+
+;===============================================================
+; INIT
+;
+; Init variables, profiting from Y=0 returned by VLINE
+
+; BASIC:
+;
+; SZ = 1
+; DX = 0
+; DY = 1
+; TA = 0
+; HE = 0
+; GW = 0
+;
+; SX(0) = 2
+; SY(0) = 2
+;
+; SC = 0
+;===============================================================
+
+        ; Y=0 after previous VLINE
+
+        sty     DX    
+        sty     TA
+        sty     HE
+        sty     GW
+
+        iny
+        sty     DY
+
+        iny    
+        sty     SX
+        sty     SY
+
+        ldy     #$E0
+        sty     DE
+
+;===============================================================
+; DRAW INITIAL FRUIT
+;
+; FX = 19
+; FY = 19
+;
+;===============================================================
+
+        lda     #19
+        tay
+        jmp     DRAWFRUIT
+
+;===============================================================
+; GAME LOOP
+;
+; 510 GOSUB INPUT
+; 520 GOSUB MOVEMENT
+; 530 GOSUB COLLISION
+; 540 GOSUB UPDATE
+; 550 GOTO 510
+;
+;===============================================================
+
+GAME
+
+        ;===============================================================
+        ; INPUT
+        ;
+        ; BASIC:
+        ;
+        ; KY = PEEK(49152)
+        ; IF KY < 128 THEN RETURN
+        ;
+        ; POKE 49168,0
+        ;
+        ; LEFT  = 136
+        ; RIGHT = 149
+        ; UP    = 193
+        ; DOWN  = 218
+        ;
+        ;===============================================================
+
+INPUT
+
+        ldy     #1
+        ldx     KBD
+        ; stx     KBDSTRB
+
+        lda     DX
+        bne     CHECK_UP    ; Only check horizontals if moving vertically
+
+        cpx     #136
+        bne     CHECK_RIGHT
+
+        sta     DY          ; A is zero from previous bne
+        dec     DX
+
+CHECK_RIGHT
+
+        cpx     #149
+        bne     INPUT_DONE
+
+        sta     DY          ; A is zero from previous bne
+        sty     DX          ; Y is previously set to 1
+
+CHECK_UP
+
+        ; When we get here, we must be moving horizontally
+        ; Y is still 1
+
+        cpx     #193
+        bne     CHECK_DOWN
+
+        dey
+        sty     DX         
+        dey
+        sty     DY
+
+CHECK_DOWN
+
+        cpx     #218
+        bne     INPUT_DONE
+
+        ; Y must still be one when we enter here
+
+        sty     DY         
+        dey
+        sty     DX          
+
+INPUT_DONE
+
+        ;=======================================================
+        ; MOVE
+        ;
+        ; Fixed 128-entry circular snake buffer.
+        ;
+        ; TA = actual tail
+        ; HE = actual head
+        ;
+        ; Normal move:
+        ;   erase TA
+        ;   TA++
+        ;   HE++
+        ;   write new head
+        ;
+        ; Growth move:
+        ;   leave TA alone
+        ;   HE++
+        ;   write new head
+        ;
+        ; GW is cleared after the new head is written.
+        ;
+        ;======================================================
+
+MOVE
+
+        ;-------------------------------------------------------
+        ; Click the speaker
+        ;-------------------------------------------------------
+
+        bit     SPKR
+
+        ;-------------------------------------------------------
+        ; If GW = 0, remove the tail.
+        ;-------------------------------------------------------
+
+        lda     GW
+        bne     MOVE_GROWING
+
+        ldx     TA
+        jsr     DRAWSNAKE ; A is 0 (BLACK) from previous bne
+
+        ;-------------------------------------------------------
+        ; TA = (TA + 1) 
+        ;-------------------------------------------------------
+
+        inx     
+        stx     TA
+
+MOVE_GROWING
+
+        ;-------------------------------------------------------
+        ; Save current head X/Y before changing HE.
+        ;
+        ; This is equivalent to:
+        ;
+        ; SX(HE) + DX
+        ; SY(HE) + DY
+        ;
+        ;-------------------------------------------------------
+
+        ldx     HE
+
+        lda     SX,x
+        clc
+        adc     DX
+        pha
+
+        lda     SY,x
+        clc
+        adc     DY
+
+        ;-------------------------------------------------------
+        ; HE = (HE + 1) 
+        ;-------------------------------------------------------
+
+        inx
+        stx     HE
+
+        ;-------------------------------------------------------
+        ; Store new head
+        ;-------------------------------------------------------
+
+        sta     SY,x
+
+        pla
+        sta     SX,x
+
+        ;-------------------------------------------------------
+        ; Growth has now been consumed.
+        ;-------------------------------------------------------
+
+        lsr     GW      ; This forces GW to 0 from 1 or 0. 
+        bcc     COLLISION
+
+        ;-------------------------------------------------------
+        ; Check for win condition (snake is 256 bytes long)
+        ; Calculate score and display it in Hexadecimal mode
+        ;-------------------------------------------------------
+
+        txa             ; A = HE
+        sbc     TA      ; A = HE - TA, C already = 1
+        beq     WIN     ; difference = 0 => full snake
+        bmi     DELAY
+        dec     DE
+DELAY   jsr     PRBYTE   ; otherwise display difference
+
+        ;=======================================================
+        ; COLLISION
+        ;
+        ; CL = SCRN(SX(HE),SY(HE))
+        ;
+        ; CL = 0   -> nothing
+        ; CL = 12  -> snake -> game over
+        ; CL = 15  -> wall  -> game over
+        ; CL = 1   -> fruit -> eat
+        ;
+        ;=======================================================
+
+COLLISION
+
+        ; x is pointing to HE at the end of MOVE
+        lda     SY,x
+        ldy     SX,x
+
+        jsr     SCRN
+        beq     COLLISION_DONE
+
+        cmp     #01
+        beq     EAT_FRUIT
+
+WIN     jsr     BELL
+        jmp     BASIC
+
+COLLISION_DONE
+
+        jsr     UPDATE
+
+        lda     DE
+        jsr     WAIT
+
+        sta     CH       ; reset cursor to column 1 as A=0 
+
+        jmp     GAME
+
+
+;========================================================
+; END OF GAME LOOP
+;========================================================
+
+;========================================================
+; UPDATE
+;
+; COLOR = 12
+; PLOT SX(HE),SY(HE)
+;
+; POKE 49200,0
+;
+; 49200 decimal = $C030 = speaker soft switch.
+;
+;=======================================================
+
+UPDATE
+
+        ldx     HE
+        lda     #SNAKECOLOR
+
+DRAWSNAKE
+
+        sta     COLOR
+        lda     SY,x    
+        ldy     SX,x
+        jmp     PLOT
+
+;===============================================================
+; EAT FRUIT
+;
+; SC = SC + 10
+;
+; FX = RND * 36 + 2
+; FY = RND * 36 + 2
+;
+; repeat if square isn't empty
+;
+; GW = 1
+;
+; draw new fruit
+
+; COLOR = 1
+; PLOT FX,FY
+;===============================================================
+
+EAT_FRUIT
+
+        ;-------------------------------------------------------
+        ; SCORE = SCORE + 10
+        ;-------------------------------------------------------
+
+        ; A is 1 due to beq instruction in COLLISION
+        sta     GW
+        jsr     BELL2
+
+NEW_FRUIT
+
+        ;-------------------------------------------------------
+        ; Generate FX in range 4..36
+        ;-------------------------------------------------------
+        ; Proper pseudo random generation is out of question for 
+        ; a program limited to 256 bytes. There isn´t a useful
+        ; routine in ROM for INTEGER numbers. As player movement
+        ; could be random, I use HE index and snake position
+        ; to generate a new position for the food. 
+        ;-------------------------------------------------------
+
+        txa             ; This inherits HE from COLLISION
+        eor     SX,x
+        and     #$1F
+        adc     #4
+        tay             ; store FX at Y for calling SCRN later
+
+        ;-------------------------------------------------------
+        ; Generate FY in range 4..36
+        ;-------------------------------------------------------
+
+        txa
+        eor     SY,x
+        and     #$1F
+        adc     #4
+
+        ;-------------------------------------------------------
+        ; Check whether destination is empty
+        ;-------------------------------------------------------
+
+        tax             ; Copy A to X in case redraft is needed
+        jsr     SCRN    ; A contains FY from previous generation
+
+        bne     NEW_FRUIT
+        txa
+
+DRAWFRUIT
+
+        ;-------------------------------------------------------
+        ; Draw fruit at designed coordinates in A and Y
+        ;-------------------------------------------------------
+
+        ldx     #RED
+        stx     COLOR
+        jsr     PLOT
+        bcc     COLLISION_DONE

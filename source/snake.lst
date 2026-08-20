@@ -1,0 +1,598 @@
+AS65 Assembler for R6502 [1.42].                                     Page    1
+--------------------------------- snake.a65 ----------------------------------
+
+562 lines read, no errors in pass 1.
+                        ;-----------------------------------------------------
+                        ;  SNAKE - Version 2
+                        ;
+                        ;  Direct 6502 implementation of the Applesoft BASIC v
+                        ;
+                        ;  Goals of Version 2:
+                        ;
+                        ;    - Preserve the BASIC game algorithm
+                        ;    - Use 8-bit integer X/Y coordinates
+                        ;    - Use 8-bit snake indexes
+                        ;    - Use one complete page for the snake arrays
+                        ;    - Use Apple II monitor ROM for graphics 
+                        ;    - Optimize for code size to fit 256 bytes boot se
+                        ;
+                        ;  Snake memory:
+                        ;
+                        ;    $3000-$30FF    SX[0..127]
+                        ;    $3100-$31FF    SY[0..127]
+                        ;-----------------------------------------------------
+                        
+                                title   "Snake Version 2"
+                                code
+0801 =                          org     $0801
+                        
+                        ;-----------------------------------------------------
+                        ; Apple II hardware
+                        ;-----------------------------------------------------
+                        
+c000 =                  KBD             equ     $C000
+c010 =                  KBDSTRB         equ     $C010
+c030 =                  SPKR            equ     $C030
+c0e8 =                  DRVMOTOR        equ     $C0E8
+                        
+                        ;-----------------------------------------------------
+                        ; Apple II monitor routines
+                        ;-----------------------------------------------------
+                        
+e003 =                  BASIC           equ     $E003
+                        
+f800 =                  PLOT            equ     $F800
+f819 =                  HLINE           equ     $F819
+f828 =                  VLINE           equ     $F828
+f871 =                  SCRN            equ     $F871
+                        
+fb40 =                  SETGR           equ     $FB40
+                        
+fca8 =                  WAIT            equ     $FCA8
+ff3a =                  BELL            equ     $FF3A
+fbe4 =                  BELL2           equ     $FBE4
+                        
+fdda =                  PRBYTE          equ     $FDDA
+                        
+                        ;-----------------------------------------------------
+                        ; Monitor zero-page locations
+                        ;-----------------------------------------------------
+                        
+0020 =                  WNDLFT          equ     $20
+0021 =                  WNDWDTH         equ     $21
+0022 =                  WNDTOP          equ     $22
+0023 =                  WNDBTM          equ     $23
+                        
+AS65 Assembler for R6502 [1.42].                                     Page    2
+------------------------------ Snake Version 2 -------------------------------
+
+0024 =                  CH              equ     $24
+0025 =                  CV              equ     $25
+                        
+0026 =                  GBASL           equ     $26
+0027 =                  GBASH           equ     $27
+                        
+0028 =                  BASL            equ     $28
+0029 =                  BASH            equ     $29
+                        
+002c =                  H2              equ     $2C
+002d =                  V2              equ     $2D
+                        
+0030 =                  COLOR           equ     $30
+                        
+                        ;-----------------------------------------------------
+                        ; Game variables
+                        ;-----------------------------------------------------
+                        
+0051 =                  DX              equ     $51
+0052 =                  DY              equ     $52
+                        
+0053 =                  TA              equ     $53
+0054 =                  HE              equ     $54
+                        
+0055 =                  GW              equ     $55
+0056 =                  DE              equ     $56
+                        
+                        ;-----------------------------------------------------
+                        ; Snake arrays
+                        ;
+                        ; One complete 256-byte page.
+                        ;
+                        ;   SX[0..127] = $3000-$307F
+                        ;   SY[0..127] = $3080-$30FF
+                        ;-----------------------------------------------------
+                        
+3000 =                  SX              equ     $3000
+3100 =                  SY              equ     $3100
+                        
+                        ;-----------------------------------------------------
+                        ; Colors
+                        ;-----------------------------------------------------
+                        
+0000 =                  BLACK           equ     $00 ; Currently not used direc
+0011 =                  RED             equ     $11
+00cc =                  SNAKECOLOR      equ     $CC
+00ff =                  WHITE           equ     $FF ; Currently not used direc
+                        
+                        ;=====================================================
+                        ; START
+                        ;=====================================================
+                        
+0801 :                  START
+                        
+                        ;-----------------------------------------------------
+                        ; Turn off disk drive motor
+                        ;-----------------------------------------------------
+                        
+0801 : ade8c0                   lda     DRVMOTOR
+                        
+                        ;=====================================================
+                        ; INITIALIZE GRAPHICS
+AS65 Assembler for R6502 [1.42].                                     Page    3
+------------------------------ Snake Version 2 -------------------------------
+
+                        ;
+                        ; BASIC:
+                        ;
+                        ; GR : HOME
+                        ;=====================================================
+                        
+0804 : 2040fb                   jsr     SETGR
+                        
+                        ;=====================================================
+                        ; DRAW BORDER
+                        ;
+                        ; COLOR = 15
+                        ;
+                        ; HLIN 0,39 AT 0
+                        ; HLIN 0,39 AT 39
+                        ; VLIN 0,39 AT 0
+                        ; VLIN 0,39 AT 39
+                        ;
+                        ; HLINE:
+                        ;   A  = Y
+                        ;   Y  = left X
+                        ;   $2C = right X
+                        ;
+                        ; VLINE:
+                        ;   A  = top Y
+                        ;   Y  = X
+                        ;   $2D = bottom Y
+                        ;=====================================================
+                        
+0807 : a0ff                     ldy     #$FF
+0809 : 8430                     sty     COLOR     ; should be $FF (WHITE) afte
+                        
+                                ; HLIN 0,39 AT 39       HLIN Y,H2 at A
+                        
+080b : c8                       iny            ; This sets Y to 0 from FF
+080c : 98                       tya            ; Set value of A to zero with s
+080d : aa                       tax            ; Save zero in X for cheaply se
+                        
+080e : a927                     lda     #39
+0810 : 852c                     sta     H2
+0812 : 852d                     sta     V2     
+                        
+0814 : 2019f8                   jsr     HLINE       
+                        
+                                ; HLIN 0,39 AT 0        A=0, Y=0
+                        
+0817 : 8a                       txa 
+0818 : a8                       tay 
+0819 : 2019f8                   jsr     HLINE
+                        
+                                ; Y is 39 after HLINE
+                        
+                                ; VLIN 0,39 AT 39       VLIN A,V2 at Y
+                        
+081c : 8a                       txa
+081d : 2028f8                   jsr     VLINE
+                        
+                                ; VLIN 0,39 AT 0
+                        
+0820 : 8a                       txa
+0821 : a8                       tay            
+0822 : 2028f8                   jsr     VLINE
+AS65 Assembler for R6502 [1.42].                                     Page    4
+------------------------------ Snake Version 2 -------------------------------
+
+                        
+                        ;=====================================================
+                        ; INIT
+                        ;
+                        ; Init variables, profiting from Y=0 returned by VLINE
+                        
+                        ; BASIC:
+                        ;
+                        ; SZ = 1
+                        ; DX = 0
+                        ; DY = 1
+                        ; TA = 0
+                        ; HE = 0
+                        ; GW = 0
+                        ;
+                        ; SX(0) = 2
+                        ; SY(0) = 2
+                        ;
+                        ; SC = 0
+                        ;=====================================================
+                        
+                                ; Y=0 after previous VLINE
+                        
+0825 : 8451                     sty     DX    
+0827 : 8453                     sty     TA
+0829 : 8454                     sty     HE
+082b : 8455                     sty     GW
+                        
+082d : c8                       iny
+082e : 8452                     sty     DY
+                        
+0830 : c8                       iny    
+0831 : 8c0030                   sty     SX
+0834 : 8c0031                   sty     SY
+                        
+0837 : a0e0                     ldy     #$E0
+0839 : 8456                     sty     DE
+                        
+                        ;=====================================================
+                        ; DRAW INITIAL FRUIT
+                        ;
+                        ; FX = 19
+                        ; FY = 19
+                        ;
+                        ;=====================================================
+                        
+083b : a913                     lda     #19
+083d : a8                       tay
+083e : 4cf308                   jmp     DRAWFRUIT
+                        
+                        ;=====================================================
+                        ; GAME LOOP
+                        ;
+                        ; 510 GOSUB INPUT
+                        ; 520 GOSUB MOVEMENT
+                        ; 530 GOSUB COLLISION
+                        ; 540 GOSUB UPDATE
+                        ; 550 GOTO 510
+                        ;
+                        ;=====================================================
+                        
+0841 :                  GAME
+AS65 Assembler for R6502 [1.42].                                     Page    5
+------------------------------ Snake Version 2 -------------------------------
+
+                        
+                                ;=============================================
+                                ; INPUT
+                                ;
+                                ; BASIC:
+                                ;
+                                ; KY = PEEK(49152)
+                                ; IF KY < 128 THEN RETURN
+                                ;
+                                ; POKE 49168,0
+                                ;
+                                ; LEFT  = 136
+                                ; RIGHT = 149
+                                ; UP    = 193
+                                ; DOWN  = 218
+                                ;
+                                ;=============================================
+                        
+0841 :                  INPUT
+                        
+0841 : a001                     ldy     #1
+0843 : ae00c0                   ldx     KBD
+                                ; stx     KBDSTRB
+                        
+0846 : a551                     lda     DX
+0848 : d010                     bne     CHECK_UP    ; Only check horizontals i
+                        
+084a : e088                     cpx     #136
+084c : d004                     bne     CHECK_RIGHT
+                        
+084e : 8552                     sta     DY          ; A is zero from previous 
+0850 : c651                     dec     DX
+                        
+0852 :                  CHECK_RIGHT
+                        
+0852 : e095                     cpx     #149
+0854 : d017                     bne     INPUT_DONE
+                        
+0856 : 8552                     sta     DY          ; A is zero from previous 
+0858 : 8451                     sty     DX          ; Y is previously set to 1
+                        
+085a :                  CHECK_UP
+                        
+                                ; When we get here, we must be moving horizont
+                                ; Y is still 1
+                        
+085a : e0c1                     cpx     #193
+085c : d006                     bne     CHECK_DOWN
+                        
+085e : 88                       dey
+085f : 8451                     sty     DX         
+0861 : 88                       dey
+0862 : 8452                     sty     DY
+                        
+0864 :                  CHECK_DOWN
+                        
+0864 : e0da                     cpx     #218
+0866 : d005                     bne     INPUT_DONE
+                        
+                                ; Y must still be one when we enter here
+                        
+0868 : 8452                     sty     DY         
+AS65 Assembler for R6502 [1.42].                                     Page    6
+------------------------------ Snake Version 2 -------------------------------
+
+086a : 88                       dey
+086b : 8451                     sty     DX          
+                        
+086d :                  INPUT_DONE
+                        
+                                ;=============================================
+                                ; MOVE
+                                ;
+                                ; Fixed 128-entry circular snake buffer.
+                                ;
+                                ; TA = actual tail
+                                ; HE = actual head
+                                ;
+                                ; Normal move:
+                                ;   erase TA
+                                ;   TA++
+                                ;   HE++
+                                ;   write new head
+                                ;
+                                ; Growth move:
+                                ;   leave TA alone
+                                ;   HE++
+                                ;   write new head
+                                ;
+                                ; GW is cleared after the new head is written.
+                                ;
+                                ;=============================================
+                        
+086d :                  MOVE
+                        
+                                ;---------------------------------------------
+                                ; Click the speaker
+                                ;---------------------------------------------
+                        
+086d : 2c30c0                   bit     SPKR
+                        
+                                ;---------------------------------------------
+                                ; If GW = 0, remove the tail.
+                                ;---------------------------------------------
+                        
+0870 : a555                     lda     GW
+0872 : d008                     bne     MOVE_GROWING
+                        
+0874 : a653                     ldx     TA
+0876 : 20cb08                   jsr     DRAWSNAKE ; A is 0 (BLACK) from previo
+                        
+                                ;---------------------------------------------
+                                ; TA = (TA + 1) 
+                                ;---------------------------------------------
+                        
+0879 : e8                       inx     
+087a : 8653                     stx     TA
+                        
+087c :                  MOVE_GROWING
+                        
+                                ;---------------------------------------------
+                                ; Save current head X/Y before changing HE.
+                                ;
+                                ; This is equivalent to:
+                                ;
+                                ; SX(HE) + DX
+                                ; SY(HE) + DY
+AS65 Assembler for R6502 [1.42].                                     Page    7
+------------------------------ Snake Version 2 -------------------------------
+
+                                ;
+                                ;---------------------------------------------
+                        
+087c : a654                     ldx     HE
+                        
+087e : bd0030                   lda     SX,x
+0881 : 18                       clc
+0882 : 6551                     adc     DX
+0884 : 48                       pha
+                        
+0885 : bd0031                   lda     SY,x
+0888 : 18                       clc
+0889 : 6552                     adc     DY
+                        
+                                ;---------------------------------------------
+                                ; HE = (HE + 1) 
+                                ;---------------------------------------------
+                        
+088b : e8                       inx
+088c : 8654                     stx     HE
+                        
+                                ;---------------------------------------------
+                                ; Store new head
+                                ;---------------------------------------------
+                        
+088e : 9d0031                   sta     SY,x
+                        
+0891 : 68                       pla
+0892 : 9d0030                   sta     SX,x
+                        
+                                ;---------------------------------------------
+                                ; Growth has now been consumed.
+                                ;---------------------------------------------
+                        
+0895 : 4655                     lsr     GW      ; This forces GW to 0 from 1 o
+0897 : 900c                     bcc     COLLISION
+                        
+                                ;---------------------------------------------
+                                ; Check for win condition (snake is 256 bytes 
+                                ; Calculate score and display it in Hexadecima
+                                ;---------------------------------------------
+                        
+0899 : 8a                       txa             ; A = HE
+089a : e553                     sbc     TA      ; A = HE - TA, C already = 1
+089c : f016                     beq     WIN     ; difference = 0 => full snake
+089e : 3002                     bmi     DELAY
+08a0 : c656                     dec     DE
+08a2 : 20dafd           DELAY   jsr     PRBYTE   ; otherwise display differenc
+                        
+                                ;=============================================
+                                ; COLLISION
+                                ;
+                                ; CL = SCRN(SX(HE),SY(HE))
+                                ;
+                                ; CL = 0   -> nothing
+                                ; CL = 12  -> snake -> game over
+                                ; CL = 15  -> wall  -> game over
+                                ; CL = 1   -> fruit -> eat
+                                ;
+                                ;=============================================
+                        
+08a5 :                  COLLISION
+AS65 Assembler for R6502 [1.42].                                     Page    8
+------------------------------ Snake Version 2 -------------------------------
+
+                        
+                                ; x is pointing to HE at the end of MOVE
+08a5 : bd0031                   lda     SY,x
+08a8 : bc0030                   ldy     SX,x
+                        
+08ab : 2071f8                   jsr     SCRN
+08ae : f00a                     beq     COLLISION_DONE
+                        
+08b0 : c901                     cmp     #01
+08b2 : f022                     beq     EAT_FRUIT
+                        
+08b4 : 203aff           WIN     jsr     BELL
+08b7 : 4c03e0                   jmp     BASIC
+                        
+08ba :                  COLLISION_DONE
+                        
+08ba : 20c708                   jsr     UPDATE
+                        
+08bd : a556                     lda     DE
+08bf : 20a8fc                   jsr     WAIT
+                        
+08c2 : 8524                     sta     CH       ; reset cursor to column 1 as
+                        
+08c4 : 4c4108                   jmp     GAME
+                        
+                        
+                        ;=====================================================
+                        ; END OF GAME LOOP
+                        ;=====================================================
+                        
+                        ;=====================================================
+                        ; UPDATE
+                        ;
+                        ; COLOR = 12
+                        ; PLOT SX(HE),SY(HE)
+                        ;
+                        ; POKE 49200,0
+                        ;
+                        ; 49200 decimal = $C030 = speaker soft switch.
+                        ;
+                        ;=====================================================
+                        
+08c7 :                  UPDATE
+                        
+08c7 : a654                     ldx     HE
+08c9 : a9cc                     lda     #SNAKECOLOR
+                        
+08cb :                  DRAWSNAKE
+                        
+08cb : 8530                     sta     COLOR
+08cd : bd0031                   lda     SY,x    
+08d0 : bc0030                   ldy     SX,x
+08d3 : 4c00f8                   jmp     PLOT
+                        
+                        ;=====================================================
+                        ; EAT FRUIT
+                        ;
+                        ; SC = SC + 10
+                        ;
+                        ; FX = RND * 36 + 2
+                        ; FY = RND * 36 + 2
+                        ;
+AS65 Assembler for R6502 [1.42].                                     Page    9
+------------------------------ Snake Version 2 -------------------------------
+
+                        ; repeat if square isn't empty
+                        ;
+                        ; GW = 1
+                        ;
+                        ; draw new fruit
+                        
+                        ; COLOR = 1
+                        ; PLOT FX,FY
+                        ;=====================================================
+                        
+08d6 :                  EAT_FRUIT
+                        
+                                ;---------------------------------------------
+                                ; SCORE = SCORE + 10
+                                ;---------------------------------------------
+                        
+                                ; A is 1 due to beq instruction in COLLISION
+08d6 : 8555                     sta     GW
+08d8 : 20e4fb                   jsr     BELL2
+                        
+08db :                  NEW_FRUIT
+                        
+                                ;---------------------------------------------
+                                ; Generate FX in range 4..36
+                                ;---------------------------------------------
+                                ; Proper pseudo random generation is out of qu
+                                ; a program limited to 256 bytes. There isn´t
+                                ; routine in ROM for INTEGER numbers. As playe
+                                ; could be random, I use HE index and snake po
+                                ; to generate a new position for the food. 
+                                ;---------------------------------------------
+                        
+08db : 8a                       txa             ; This inherits HE from COLLIS
+08dc : 5d0030                   eor     SX,x
+08df : 291f                     and     #$1F
+08e1 : 6904                     adc     #4
+08e3 : a8                       tay             ; store FX at Y for calling SC
+                        
+                                ;---------------------------------------------
+                                ; Generate FY in range 4..36
+                                ;---------------------------------------------
+                        
+08e4 : 8a                       txa
+08e5 : 5d0031                   eor     SY,x
+08e8 : 291f                     and     #$1F
+08ea : 6904                     adc     #4
+                        
+                                ;---------------------------------------------
+                                ; Check whether destination is empty
+                                ;---------------------------------------------
+                        
+08ec : aa                       tax             ; Copy A to X in case redraft 
+08ed : 2071f8                   jsr     SCRN    ; A contains FY from previous 
+                        
+08f0 : d0e9                     bne     NEW_FRUIT
+08f2 : 8a                       txa
+                        
+08f3 :                  DRAWFRUIT
+                        
+                                ;---------------------------------------------
+                                ; Draw fruit at designed coordinates in A and 
+                                ;---------------------------------------------
+AS65 Assembler for R6502 [1.42].                                     Page   10
+------------------------------ Snake Version 2 -------------------------------
+
+                        
+08f3 : a211                     ldx     #RED
+08f5 : 8630                     stx     COLOR
+08f7 : 2000f8                   jsr     PLOT
+08fa : 90be                     bcc     COLLISION_DONE
+                        
+No errors in pass 2.
+Wrote binary from address $0801 through $08fb.
+Total size 251 bytes.
+
