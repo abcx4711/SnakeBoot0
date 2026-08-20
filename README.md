@@ -9,24 +9,24 @@ The assembler package is included in the tools directory.
 
 Repository contents:
 
-Makefile                - For use with GNU/Linux make program
-LICENSE                 - MIT License conditions for the SNAKE BOOT0 program, 
-                          excluding the AS65 package, which is distributed 
-                          under its own terms
-README.md               - This file
+- Makefile                - For use with GNU/Linux make program
+- LICENSE                 - MIT License conditions for the SNAKE BOOT0 program, 
+                            excluding the AS65 package, which is distributed 
+                            under its own terms
+- README.md               - This file
 
-source/snake.a65        - 6502 assembly code using AS65 syntax
-source/makesnakedisk.sh - shell script to create a dsk file with the game on 
-                          sector 0
-source/makesnakebinfile.sh - shell script to create a DOS 3.3 loadable binary file
-                             only needed if you want to copy this into a DOS disk
+- source/snake.a65        - 6502 assembly code using AS65 syntax
+- source/makesnakedisk.sh - shell script to create a dsk file with the game on 
+                            sector 0
+- source/makesnakebinfile.sh - shell script to create a DOS 3.3 loadable binary file
+                               only needed if you want to copy this into a DOS disk
 
-bin/snake.bin           - binary to load into sector 0 of a disk
-bin/snakeloadable.bin   - binary to copy into a standard DOS disk
+- bin/snake.bin           - binary to load into sector 0 of a disk
+- bin/snakeloadable.bin   - binary to copy into a standard DOS disk
 
-disk/snake.dsk          - disk with bootable sector-0 game program (no DOS)
+- disk/snake.dsk          - disk with bootable sector-0 game program (no DOS)
 
-tools/as65_142.zip      - AS65 assembler package by Frank A. Kingswood. 
+- tools/as65_142.zip      - AS65 assembler package by Frank A. Kingswood. 
 
 Bootable zero sector games became famous on the PC architecture, where they 
 can be up to 510 bytes long. On the Apple II, boot sector zero is 256 bytes 
@@ -47,9 +47,9 @@ and is entirely optional.
 To build the game on Linux, type make from the project directory. 
 
 This overwrites: 
-    bin/snake.bin
-    bin/snakeloadable.bin
-    disk/snake.dsk
+-    bin/snake.bin
+-    bin/snakeloadable.bin
+-    disk/snake.dsk
 
 Gameplay: Use A, Z and arrows to control snake. Eat fruits for points
 
