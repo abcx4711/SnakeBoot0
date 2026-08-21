@@ -1,9 +1,9 @@
 ;---------------------------------------------------------------
-;  SNAKE - Version 2
+;  SNAKE - Version 1
 ;
 ;  Direct 6502 implementation of the Applesoft BASIC version.
 ;
-;  Goals of Version 2:
+;  Goals of Version 1:
 ;
 ;    - Preserve the BASIC game algorithm
 ;    - Use 8-bit integer X/Y coordinates
