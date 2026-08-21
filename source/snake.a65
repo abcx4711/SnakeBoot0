@@ -117,7 +117,8 @@ START
 ; Turn off disk drive motor
 ;---------------------------------------------------------------
 
-        lda     DRVMOTOR
+        ;lda     DRVMOTOR
+        lda     $C088,x
 
 ;===============================================================
 ; INITIALIZE GRAPHICS

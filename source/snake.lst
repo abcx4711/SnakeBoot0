@@ -1,7 +1,7 @@
 AS65 Assembler for R6502 [1.42].                                     Page    1
 --------------------------------- snake.a65 ----------------------------------
 
-562 lines read, no errors in pass 1.
+563 lines read, no errors in pass 1.
                         ;-----------------------------------------------------
                         ;  SNAKE - Version 2
                         ;
@@ -124,13 +124,14 @@ fdda =                  PRBYTE          equ     $FDDA
                         ; Turn off disk drive motor
                         ;-----------------------------------------------------
                         
-0801 : ade8c0                   lda     DRVMOTOR
+                                ;lda     DRVMOTOR
+0801 : bd88c0                   lda     $C088,x
                         
                         ;=====================================================
-                        ; INITIALIZE GRAPHICS
 AS65 Assembler for R6502 [1.42].                                     Page    3
 ------------------------------ Snake Version 2 -------------------------------
 
+                        ; INITIALIZE GRAPHICS
                         ;
                         ; BASIC:
                         ;
@@ -192,10 +193,10 @@ fdda =                  PRBYTE          equ     $FDDA
                         
 0820 : 8a                       txa
 0821 : a8                       tay            
-0822 : 2028f8                   jsr     VLINE
 AS65 Assembler for R6502 [1.42].                                     Page    4
 ------------------------------ Snake Version 2 -------------------------------
 
+0822 : 2028f8                   jsr     VLINE
                         
                         ;=====================================================
                         ; INIT
@@ -257,10 +258,10 @@ fdda =                  PRBYTE          equ     $FDDA
                         ;
                         ;=====================================================
                         
-0841 :                  GAME
 AS65 Assembler for R6502 [1.42].                                     Page    5
 ------------------------------ Snake Version 2 -------------------------------
 
+0841 :                  GAME
                         
                                 ;=============================================
                                 ; INPUT
@@ -322,10 +323,10 @@ fdda =                  PRBYTE          equ     $FDDA
                         
                                 ; Y must still be one when we enter here
                         
-0868 : 8452                     sty     DY         
 AS65 Assembler for R6502 [1.42].                                     Page    6
 ------------------------------ Snake Version 2 -------------------------------
 
+0868 : 8452                     sty     DY         
 086a : 88                       dey
 086b : 8451                     sty     DX          
                         
@@ -387,10 +388,10 @@ fdda =                  PRBYTE          equ     $FDDA
                                 ; This is equivalent to:
                                 ;
                                 ; SX(HE) + DX
-                                ; SY(HE) + DY
 AS65 Assembler for R6502 [1.42].                                     Page    7
 ------------------------------ Snake Version 2 -------------------------------
 
+                                ; SY(HE) + DY
                                 ;
                                 ;---------------------------------------------
                         
@@ -452,10 +453,10 @@ fdda =                  PRBYTE          equ     $FDDA
                                 ;
                                 ;=============================================
                         
-08a5 :                  COLLISION
 AS65 Assembler for R6502 [1.42].                                     Page    8
 ------------------------------ Snake Version 2 -------------------------------
 
+08a5 :                  COLLISION
                         
                                 ; x is pointing to HE at the end of MOVE
 08a5 : bd0031                   lda     SY,x
@@ -517,10 +518,10 @@ fdda =                  PRBYTE          equ     $FDDA
                         ;
                         ; FX = RND * 36 + 2
                         ; FY = RND * 36 + 2
-                        ;
 AS65 Assembler for R6502 [1.42].                                     Page    9
 ------------------------------ Snake Version 2 -------------------------------
 
+                        ;
                         ; repeat if square isn't empty
                         ;
                         ; GW = 1
@@ -582,10 +583,10 @@ fdda =                  PRBYTE          equ     $FDDA
                         
                                 ;---------------------------------------------
                                 ; Draw fruit at designed coordinates in A and 
-                                ;---------------------------------------------
 AS65 Assembler for R6502 [1.42].                                     Page   10
 ------------------------------ Snake Version 2 -------------------------------
 
+                                ;---------------------------------------------
                         
 08f3 : a211                     ldx     #RED
 08f5 : 8630                     stx     COLOR
