@@ -47,7 +47,8 @@ required for the boot zero disk version and is entirely optional.
 
 ## Building
 
-To build the game on Linux, type:
+To build the game on Linux, you will need to update the AS65_DIR on the Makefile
+and then type:
 
     make
 
