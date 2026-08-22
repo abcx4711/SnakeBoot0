@@ -29,6 +29,7 @@
 KBD             equ     $C000
 KBDSTRB         equ     $C010
 SPKR            equ     $C030
+MOTOROFF        equ     $C088
 DRVMOTOR        equ     $C0E8
 
 ;---------------------------------------------------------------
@@ -118,7 +119,7 @@ START
 ;---------------------------------------------------------------
 
         ;lda     DRVMOTOR
-        lda     $C088,x
+        lda     MOTOROFF,x
 
 ;===============================================================
 ; INITIALIZE GRAPHICS
@@ -316,7 +317,7 @@ INPUT_DONE
         ;=======================================================
         ; MOVE
         ;
-        ; Fixed 128-entry circular snake buffer.
+        ; Fixed 256-entry circular snake buffer.
         ;
         ; TA = actual tail
         ; HE = actual head
@@ -358,8 +359,9 @@ MOVE
         ; TA = (TA + 1) 
         ;-------------------------------------------------------
 
-        inx     
-        stx     TA
+        ;inx     
+        ;stx     TA
+        inc     TA
 
 MOVE_GROWING
 
