@@ -165,11 +165,11 @@ fdda =                  PRBYTE          equ     $FDDA
 0807 : a0ff                     ldy     #$FF
 0809 : 8430                     sty     COLOR     ; should be $FF (WHITE) afte
                         
-                                ; HLIN 0,39 AT 39       HLIN Y,H2 at A
-                        
 080b : c8                       iny            ; This sets Y to 0 from FF
 080c : 98                       tya            ; Set value of A to zero with s
 080d : aa                       tax            ; Save zero in X for cheaply se
+                        
+                                ; HLIN 0,39 AT 39       HLIN Y,H2 at A
                         
 080e : a927                     lda     #39
 0810 : 852c                     sta     H2
@@ -190,7 +190,7 @@ fdda =                  PRBYTE          equ     $FDDA
 081c : 8a                       txa
 081d : 2028f8                   jsr     VLINE
                         
-                                ; VLIN 0,39 AT 0
+                                ; VLIN 0,39 AT 0        A=0, Y=0
                         
 0820 : 8a                       txa
 AS65 Assembler for R6502 [1.42].                                     Page    4
