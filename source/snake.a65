@@ -155,11 +155,11 @@ START
         ldy     #$FF
         sty     COLOR     ; should be $FF (WHITE) after SETGR
 
-        ; HLIN 0,39 AT 39       HLIN Y,H2 at A
-
         iny            ; This sets Y to 0 from FF
         tya            ; Set value of A to zero with single byte op
         tax            ; Save zero in X for cheaply setting A and Y later
+
+        ; HLIN 0,39 AT 39       HLIN Y,H2 at A
 
         lda     #39
         sta     H2
@@ -180,7 +180,7 @@ START
         txa
         jsr     VLINE
 
-        ; VLIN 0,39 AT 0
+        ; VLIN 0,39 AT 0        A=0, Y=0
 
         txa
         tay            
