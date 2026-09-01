@@ -1,0 +1,335 @@
+;---------------------------------------------------------------
+;  SNAKE - Version 1
+;
+;  Direct 6502 implementation of the Applesoft BASIC version.
+;
+;  Goals of Version 1:
+;
+;    - Preserve the BASIC game algorithm
+;    - Use 8-bit integer X/Y coordinates
+;    - Use 8-bit snake indexes
+;    - Use one complete page for the snake arrays
+;    - Use Apple II monitor ROM for graphics 
+;    - Optimize for code size to fit 256 bytes boot sector
+;
+;  Snake memory:
+;
+;    $3000-$30FF    SX[0..127]
+;    $3100-$31FF    SY[0..127]
+
+;---------------------------------------------------------------
+;  This is SNAKE Version 2 by F.Knab September 1, 2026
+;   - code size will fit in one 512 byte smartport block
+;   - enhanced functionality
+;   - various help texts, use all arrow keys to move snake
+;   - display GAME OVER when snake touches frame and restart game after 5 sec.
+;   - P key to pause game
+;   - B key for exit to Applesoft Basic Coldstart routine, warm boot is not save
+;   - converted to 64tass-1.60.3243 assembler, Visual Studio Code and some Windows Powershell scripts
+;---------------------------------------------------------------
+
+; Apple ROM will load 512 byte boot block to $0800 and starts code at address $0801
+; Smartport partitions have $#01 at position $0800
+        * =      $0801
+
+; Hardware & Monitor
+KBD             =     $C000
+KBDSTRB         =     $C010
+SPKR            =     $C030
+MOTOROFF        =     $C088
+;BASIC          =     $E003 ; Applesoft Basic warm boot
+BASIC           =     $E000 ; we use Applesoft Basic cold boot
+
+COUT            =     $FDED
+VTAB            =     $FC22
+PLOT            =     $F800
+HLINE           =     $F819
+VLINE           =     $F828
+SCRN            =     $F871
+HOME            =     $FC58
+SETGR           =     $FB40
+SETTXT          =     $FB39
+WAIT            =     $FCA8
+BELL            =     $FF3A
+BELL2           =     $FBE4
+SETCHR = $E3A7
+; Zero-Page
+CH              =     $24
+CV              =     $25
+H2              =     $2C
+V2              =     $2D
+COLOR           =     $30
+DX              =     $51
+DY              =     $52
+TA              =     $53
+HE              =     $54
+GW              =     $55
+DE              =     $56
+
+; Zero-Page (Applesoft BASIC Pointers per Apple II Spec)
+ARYTAB          =     $6B       ; Pointer to start of arrays ($6B-$6C)
+STREND          =     $6D       ; Pointer to end of arrays ($6D-$6E)
+TXTTAB          =     $67       ; Pointer to start of BASIC program ($73-$74)
+VARTAB          =     $69       ; Pointer to start of variables ($75-$76)
+PRGEND          =     $AF       ; End of Program Pointer ($AF-$B0)
+FRETOP          =     $6F       ; Start des String-Speichers ($6F-$70)
+MEMSIZ = $73
+
+; Arrays
+SX              =     $3000
+SY              =     $3100
+
+; Keycodes
+KEY_LEFT        = 136
+KEY_RIGHT       = 149
+KEY_UP          = 139
+KEY_DOWN        = 138
+KEY_PAUSE       = 208
+KEY_BASIC       = 194
+
+START
+        lda     MOTOROFF,x
+
+START1
+        jsr     HOME
+        jsr     SETGR
+
+; BORDER
+        ldy     #$FF
+        sty     COLOR
+        iny
+        tya
+        tax
+        lda     #39
+        sta     H2
+        sta     V2     
+        jsr     HLINE       
+        txa 
+        tay 
+        jsr     HLINE
+        txa
+        jsr     VLINE
+        txa
+        tay            
+        jsr     VLINE
+
+; HELP TEXT (Line 22, Col 4)
+        lda     #<MSG_HELP
+        sta     $FD
+        lda     #>MSG_HELP
+        sta     $FE
+        lda     #4
+        ldy     #22
+        jsr     PRINT_AT
+
+; INIT VARS
+        ldy     #0
+        sty     DX    
+        sty     TA
+        sty     HE
+        sty     GW
+        iny
+        sty     DY
+        iny
+        sty     SX
+        sty     SY
+        ldy     #$E0
+        sty     DE
+
+        lda     #19
+        tay
+        jmp     DRAWFRUIT
+
+; GAME LOOP
+GAME
+INPUT
+        ldy     #1
+        ldx     KBD
+
+        cpx     #KEY_PAUSE
+        bne     CHECK_BASIC
+        sta     KBDSTRB
+PAUSE_LOOP
+        lda     KBD
+        bpl     PAUSE_LOOP
+        sta     KBDSTRB
+        jmp     INPUT_DONE
+
+CHECK_BASIC
+        cpx     #KEY_BASIC
+        bne     CHECK_ARROWS
+        sta     KBDSTRB
+        lda     $E000
+        cmp     #$4C
+        bne     NO_BASIC_ROM
+        jsr     SETTXT
+        jsr     HOME
+        jmp     BASIC
+
+NO_BASIC_ROM
+        jsr     BELL
+        lda     #<MSG_NO_BASIC
+        sta     $FD
+        lda     #>MSG_NO_BASIC
+        sta     $FE
+        lda     #16
+        ldy     #20
+        jsr     PRINT_AT
+        jmp     INPUT_DONE
+
+CHECK_ARROWS
+        lda     DX
+        bne     CHECK_UP_DOWN
+        cpx     #KEY_LEFT
+        bne     CHECK_RIGHT
+        sta     DY          
+        dec     DX
+        jmp     INPUT_DONE
+
+CHECK_RIGHT
+        cpx     #KEY_RIGHT
+        bne     INPUT_DONE
+        sta     DY          
+        sty     DX          
+        jmp     INPUT_DONE
+
+CHECK_UP_DOWN
+        cpx     #KEY_UP
+        bne     CHECK_DOWN
+        dey
+        sty     DX         
+        dey
+        sty     DY
+        jmp     INPUT_DONE
+
+CHECK_DOWN
+        cpx     #KEY_DOWN
+        bne     INPUT_DONE
+        sty     DY         
+        dey
+        sty     DX          
+
+INPUT_DONE
+MOVE
+        bit     SPKR
+        lda     GW
+        bne     MOVE_GROWING
+        ldx     TA
+        jsr     DRAWSNAKE 
+        inc     TA
+
+MOVE_GROWING
+        ldx     HE
+        lda     SX,x
+        clc
+        adc     DX
+        pha
+        lda     SY,x
+        clc
+        adc     DY
+        inx
+        stx     HE
+        sta     SY,x
+        pla
+        sta     SX,x
+
+        lsr     GW      
+        bcc     COLLISION
+
+        txa             
+        sbc     TA      
+        beq     WIN     
+        bmi     COLLISION
+        dec     DE      
+
+COLLISION
+        ldx     HE
+        lda     SY,x
+        ldy     SX,x
+        jsr     SCRN
+        beq     COLLISION_DONE
+        cmp     #01
+        beq     EAT_FRUIT
+
+WIN     jsr     BELL
+        lda     #<MSG_GAMEOVER
+        sta     $FD
+        lda     #>MSG_GAMEOVER
+        sta     $FE
+        lda     #15
+        ldy     #20
+        jsr     PRINT_AT
+
+        ldx     #6
+WAIT_LOOP
+        lda     #$FF
+        jsr     WAIT
+        dex
+        bne     WAIT_LOOP
+
+        bit     KBDSTRB
+        jmp     START1
+
+COLLISION_DONE
+        jsr     UPDATE
+        lda     DE
+        jsr     WAIT
+        jmp     GAME
+
+UPDATE
+        ldx     HE
+        lda     #$CC        ; SNAKECOLOR
+
+DRAWSNAKE
+        sta     COLOR
+        lda     SY,x    
+        ldy     SX,x
+        jmp     PLOT
+
+EAT_FRUIT
+        sta     GW
+        jsr     BELL2
+
+NEW_FRUIT
+        txa             
+        eor     SX,x
+        and     #$1F
+        adc     #4
+        tay             
+        txa
+        eor     SY,x
+        and     #$1F
+        adc     #4
+        tax             
+        jsr     SCRN    
+        bne     NEW_FRUIT
+        txa
+
+DRAWFRUIT
+        ldx     #$11        ; RED
+        stx     COLOR
+        jsr     PLOT
+        jmp     COLLISION_DONE
+
+; PRINT_AT: A=CH, Y=CV, Ptr in $FD/$FE
+PRINT_AT
+        sta     CH
+        sty     CV
+        jsr     VTAB
+        ldy     #0
+PRINT_LOOP
+        lda     ($FD),y
+        beq     PRINT_DONE
+        ora     #$80
+        jsr     COUT
+        iny
+        jmp     PRINT_LOOP
+PRINT_DONE
+        rts
+
+; STRINGS
+MSG_GAMEOVER    .text "GAME OVER", $00
+MSG_HELP        .text "USE ARROW KEYS/P=PAUSE/B=BASIC", $00
+MSG_NO_BASIC    .text "NO BASIC", $00
+
+

@@ -12,80 +12,82 @@
 ;    - Use Apple II monitor ROM for graphics 
 ;    - Optimize for code size to fit 256 bytes boot sector
 ;
+; Version 1.1 by F.Knab September 1, 2026
+;       - use JMP to Applesoft Basic cold start instead of warm start at end of game to avoid crash
+;       - converted to 64tass-1.60.3243 assembler, Visual Studio Code with 64tass extension and some Windows Powershell scripts
+;
 ;  Snake memory:
 ;
 ;    $3000-$30FF    SX[0..127]
 ;    $3100-$31FF    SY[0..127]
 ;---------------------------------------------------------------
-
-        title   "Snake Version 2"
-        code
-        org     $0801
+        * =     $0801
 
 ;---------------------------------------------------------------
 ; Apple II hardware
 ;---------------------------------------------------------------
 
-KBD             equ     $C000
-KBDSTRB         equ     $C010
-SPKR            equ     $C030
-MOTOROFF        equ     $C088
-DRVMOTOR        equ     $C0E8
+KBD             =     $C000
+KBDSTRB         =     $C010
+SPKR            =     $C030
+MOTOROFF        =     $C088
+DRVMOTOR        =     $C0E8
 
 ;---------------------------------------------------------------
 ; Apple II monitor routines
 ;---------------------------------------------------------------
 
-BASIC           equ     $E003
+BASIC           =     $E000  ; use Applesoft Basic cold start
+;BASIC           =     $E003 ; warm start
 
-PLOT            equ     $F800
-HLINE           equ     $F819
-VLINE           equ     $F828
-SCRN            equ     $F871
+PLOT            =     $F800
+HLINE           =     $F819
+VLINE           =     $F828
+SCRN            =     $F871
 
-SETGR           equ     $FB40
+SETGR           =     $FB40
 
-WAIT            equ     $FCA8
-BELL            equ     $FF3A
-BELL2           equ     $FBE4
+WAIT            =     $FCA8
+BELL            =     $FF3A
+BELL2           =     $FBE4
 
-PRBYTE          equ     $FDDA
+PRBYTE          =     $FDDA
 
 ;---------------------------------------------------------------
 ; Monitor zero-page locations
 ;---------------------------------------------------------------
 
-WNDLFT          equ     $20
-WNDWDTH         equ     $21
-WNDTOP          equ     $22
-WNDBTM          equ     $23
+WNDLFT          =     $20
+WNDWDTH         =     $21
+WNDTOP          =     $22
+WNDBTM          =     $23
 
-CH              equ     $24
-CV              equ     $25
+CH              =     $24
+CV              =     $25
 
-GBASL           equ     $26
-GBASH           equ     $27
+GBASL           =     $26
+GBASH           =     $27
 
-BASL            equ     $28
-BASH            equ     $29
+BASL            =     $28
+BASH            =     $29
 
-H2              equ     $2C
-V2              equ     $2D
+H2              =     $2C
+V2              =     $2D
 
-COLOR           equ     $30
+COLOR           =     $30
 
 ;---------------------------------------------------------------
 ; Game variables
 ;---------------------------------------------------------------
 
-DX              equ     $51
-DY              equ     $52
+DX              =     $51
+DY              =     $52
 
-TA              equ     $53
-HE              equ     $54
+TA              =     $53
+HE              =     $54
 
-GW              equ     $55
-DE              equ     $56
+GW              =     $55
+DE              =     $56
 
 ;---------------------------------------------------------------
 ; Snake arrays
@@ -96,17 +98,17 @@ DE              equ     $56
 ;   SY[0..127] = $3080-$30FF
 ;---------------------------------------------------------------
 
-SX              equ     $3000
-SY              equ     $3100
+SX              =     $3000
+SY              =     $3100
 
 ;---------------------------------------------------------------
 ; Colors
 ;---------------------------------------------------------------
 
-BLACK           equ     $00 ; Currently not used directly
-RED             equ     $11
-SNAKECOLOR      equ     $CC
-WHITE           equ     $FF ; Currently not used directly
+BLACK           =     $00 ; Currently not used directly
+RED             =     $11
+SNAKECOLOR      =     $CC
+WHITE           =     $FF ; Currently not used directly
 
 ;===============================================================
 ; START

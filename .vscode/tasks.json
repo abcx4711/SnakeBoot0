@@ -1,0 +1,55 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "64tass: Compile current file",
+      "type": "shell",
+      "command": "C:/Users/cantaro/Downloads/64tass-1.60.3243/64tass",
+      "args": [
+        "-b",
+        "${file}",
+        "-o",
+        "${fileDirname}/../bin/${fileBasenameNoExtension}.bin"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "PowerShell: Make Disk Image",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${fileDirname}/makesnakedisk.ps1"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "PowerShell: Make Bin File",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${fileDirname}/makesnakebinfile.ps1"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "Build All",
+      "dependsOn": [
+        "64tass: Compile current file",
+        "PowerShell: Make Disk Image",
+        "PowerShell: Make Bin File"
+      ],
+      "dependsOrder": "sequence",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": []
+    }
+  ]
+}
