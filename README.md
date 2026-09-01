@@ -4,8 +4,7 @@ SNAKE BOOT0 is a Snake-inspired game written in 6502 Assembly for the Apple II
 line of computers and optimized to fit a single disk sector so that it can be
 played as a sector 0 bootable game.
 
-Snake was developed on a Linux Mint PC running the AS65 cross assembly program.
-The assembler package is included in the `tools` directory.
+Snake was originaly developed on a Linux Mint PC running the AS65 cross assembly program.
 
 ### Snake Version 1.1 
 255-byte challenge version now Jumps to Basic cold start routine at end of game to avoid crash
@@ -33,7 +32,6 @@ for versions 1.1 and 2 the 64tass assembler(1.60.3243), Visual Studio Code and s
 - `bin/snakeloadable.bin` — Binary to copy into a standard DOS disk
 - `disk/snake.dsk` — Disk with bootable sector-0 game program (no DOS)
 - `disk/snake2.hdv` — Disk with bootable block-0 game program (no DOS)
-- `tools/as65_142.zip` — AS65 assembler package by Frank A. Kingswood
 
 ## The 255-byte challenge
 
