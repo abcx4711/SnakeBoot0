@@ -7,9 +7,12 @@ played as a sector 0 bootable game.
 Snake was developed on a Linux Mint PC running the AS65 cross assembly program.
 The assembler package is included in the `tools` directory.
 
-Snake Version 1.1 for 255-byte challenge now Jumps to Basic cold start routine at end of game
-new Snake Version 2 for 1-block-512-byte smartport challenge with more functionality
-for both versions 64tass assembler(-1.60.3243), Visual Studio Code and some Powershell scripts on Windows are used  
+### Snake Version 1.1 
+255-byte challenge version now Jumps to Basic cold start routine at end of game to avoid crash
+
+### new Snake Version 2 for 1-block-512-byte challenge with more functionality
+
+for versions 1.1 and 2 the 64tass assembler(1.60.3243), Visual Studio Code and some Powershell scripts on Windows are used  
 
 ## Repository contents
 
@@ -21,7 +24,7 @@ for both versions 64tass assembler(-1.60.3243), Visual Studio Code and some Powe
 - `source/snake2.a65` — 6502 assembly code using 64tass syntax
 - `source/makesnakedisk.sh` — Shell script to create a `.dsk` file with the game
   on sector 0
-- `source/makesnakedisk.ps1` — Powershell script to create a `.hdv` file with the game
+- `source/makesnakedisk.ps1` — Powershell script to create `.dsk` and `.hdv` file with the game
   in block 0
 - `source/makesnakebinfile.sh` — Shell script to create a DOS 3.3 loadable binary
 - `source/makesnakebinfile.ps1` — Powershell script to create a DOS 3.3 loadable binary with one 512 block
