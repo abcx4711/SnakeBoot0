@@ -25,7 +25,7 @@ for versions 1.1 and 2 the 64tass assembler(1.60.3243), Visual Studio Code and s
 - `source/makesnakedisk.sh` — Shell script to create a `.dsk` file with the game
   on sector 0
 - `source/makesnakedisk.ps1` — Powershell script to create `.dsk` and `.hdv` file with the game
-  in block 0
+  in sector/block 0
 - `source/makesnakebinfile.sh` — Shell script to create a DOS 3.3 loadable binary
 - `source/makesnakebinfile.ps1` — Powershell script to create a DOS 3.3 loadable binary with one 512 block
 - `bin/snake.bin` — Binary to load into sector 0 of a disk
