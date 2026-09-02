@@ -11,18 +11,24 @@ Snake was originaly developed on a Linux Mint PC running the AS65 cross assembly
 
 ### new Snake Version 2 for 1-block-512-byte challenge with more functionality
 
-for versions 1.1 and 2 the 64tass assembler(1.60.3243), Visual Studio Code and some Powershell scripts on Windows are used  
+for versions 1.1 and 2 the 64tass assembler(1.60.3243), Visual Studio Code and some Powershell scripts on Windows are used
+
+on Linux install 64tass via:
+sudo apt update
+sudo apt install -y 64tass 
 
 ## Repository contents
 
 - `Makefile` — For use with GNU/Linux `make`
-- `LICENSE` — MIT License conditions for SNAKE BOOT0, excluding the AS65 package,
+- `LICENSE` — MIT License conditions for SNAKE BOOT0, excluding the AS65/64tass package,
   which is distributed under its own terms
 - `README.md` — This file
 - `source/snake.a65` — 6502 assembly code using 64tass syntax
 - `source/snake2.a65` — 6502 assembly code using 64tass syntax
 - `source/makesnakedisk.sh` — Shell script to create a `.dsk` file with the game
-  on sector 0
+  in sector 0
+- `source/makesnakehdv.sh` — Shell script to create a `.hdv` file with the game
+  in block 0
 - `source/makesnakedisk.ps1` — Powershell script to create `.dsk` and `.hdv` file with the game
   in sector/block 0
 - `source/makesnakebinfile.sh` — Shell script to create a DOS 3.3 loadable binary
@@ -58,7 +64,7 @@ required for the boot zero disk version and is entirely optional.
 
 ## Building
 
-To build the game on Linux, you will need to update the AS65_DIR on the Makefile
+To build the game on Linux, you will need to update the 64TASS setting in the Makefile
 and then type:
 
     make
@@ -66,11 +72,16 @@ and then type:
 This overwrites:
 
 - `bin/snake.bin`
+- `bin/snake2.bin`
 - `bin/snakeloadable.bin`
 - `disk/snake.dsk`
+- `disk/snake2.hdv`
+
+on Windows and Visual Studion code check .vscode/tasks.json and then build
 
 ## Gameplay
 
-Use **A**, **Z**, and the arrow keys to control the snake.
+Use **A**, **Z**, and the arrow keys to control the snake for Version 1
+Use arrow keys to control the snake for Version 2
 
 Eat fruits for points.

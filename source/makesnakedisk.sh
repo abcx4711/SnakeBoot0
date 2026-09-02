@@ -1,5 +1,10 @@
 #!/bin/sh
 
+if [ ! -f bin/snake.bin ]; then
+    echo "bin/snake.bin not found"
+    exit 1
+fi
+
 # Create a 143,360-byte empty disk image
 dd if=/dev/zero of=disk/snake.dsk bs=256 count=560
 

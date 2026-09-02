@@ -1,23 +1,32 @@
-AS65_DIR ?= ~/Apps/AS65
 
-SOURCE   = source/snake.a65
-OUTPUT   = bin/snake.bin
-LOADABLE = bin/snakeloadable.bin
-DISK     = disk/snake.dsk
-AS65     = $(AS65_DIR)/as65
+
+SOURCE1   = source/snake.a65
+SOURCE2   = source/snake2.a65
+OUTPUT1    = bin/snake.bin
+OUTPUT2    = bin/snake2.bin
+LOADABLE  = bin/snakeloadable.bin
+DISK1     = disk/snake.dsk
+DISK2     = disk/snake2.hdv
+64TASS    = 64tass
 
 .PHONY: all disk clean
 
-all: $(OUTPUT) $(LOADABLE) $(DISK)
+all: $(OUTPUT1) $(OUTPUT2) $(LOADABLE) $(DISK1) $(DISK2)
 
-$(OUTPUT): $(SOURCE)
-	$(AS65) -l $(SOURCE) -o$(OUTPUT)
+$(OUTPUT1): $(SOURCE1)
+	$(64TASS) -b $(SOURCE1) -o$(OUTPUT1)
 
-$(LOADABLE): $(OUTPUT)
-	source/makesnakebinfile.sh $(OUTPUT) $(LOADABLE)
+$(OUTPUT2): $(SOURCE2)
+	$(64TASS) -b $(SOURCE2) -o$(OUTPUT2)
 
-$(DISK): $(OUTPUT)
+$(LOADABLE): $(OUTPUT1)
+	source/makesnakebinfile.sh $(OUTPUT1) $(LOADABLE)
+
+$(DISK1): $(OUTPUT1)
 	source/makesnakedisk.sh
+
+$(DISK2): $(OUTPUT2)
+	source/makesnakehdv.sh
 
 clean:
 	rm -f bin/* disk/*

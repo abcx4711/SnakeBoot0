@@ -52,6 +52,7 @@ SETTXT          =     $FB39
 WAIT            =     $FCA8
 BELL            =     $FF3A
 BELL2           =     $FBE4
+PRBYTE          =     $FDDA
 SETCHR = $E3A7
 ; Zero-Page
 CH              =     $24
@@ -66,15 +67,6 @@ HE              =     $54
 GW              =     $55
 DE              =     $56
 
-; Zero-Page (Applesoft BASIC Pointers per Apple II Spec)
-ARYTAB          =     $6B       ; Pointer to start of arrays ($6B-$6C)
-STREND          =     $6D       ; Pointer to end of arrays ($6D-$6E)
-TXTTAB          =     $67       ; Pointer to start of BASIC program ($73-$74)
-VARTAB          =     $69       ; Pointer to start of variables ($75-$76)
-PRGEND          =     $AF       ; End of Program Pointer ($AF-$B0)
-FRETOP          =     $6F       ; Start des String-Speichers ($6F-$70)
-MEMSIZ = $73
-
 ; Arrays
 SX              =     $3000
 SY              =     $3100
@@ -87,8 +79,11 @@ KEY_DOWN        = 138
 KEY_PAUSE       = 208
 KEY_BASIC       = 194
 
+;---------------------------------------------------------------
+; Turn off disk drive motor not necessary in this version
+;---------------------------------------------------------------
 START
-        lda     MOTOROFF,x
+       ; lda     MOTOROFF,x
 
 START1
         jsr     HOME
@@ -145,6 +140,8 @@ GAME
 INPUT
         ldy     #1
         ldx     KBD
+        bpl     INPUT_DONE
+        bit     KBDSTRB
 
         cpx     #KEY_PAUSE
         bne     CHECK_BASIC
@@ -236,12 +233,19 @@ MOVE_GROWING
         lsr     GW      
         bcc     COLLISION
 
+        ;-------------------------------------------------------
+        ; Check for win condition (snake is 256 bytes long)
+        ; Calculate score and display it in Hexadecimal mode
+        ;-------------------------------------------------------
+
         txa             
         sbc     TA      
         beq     WIN     
-        bmi     COLLISION
-        dec     DE      
-
+        bmi     DELAY
+        dec     DE
+        ldx     #0
+        stx     CH
+ DELAY  jsr     PRBYTE   ; otherwise display difference
 COLLISION
         ldx     HE
         lda     SY,x

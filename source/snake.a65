@@ -118,11 +118,15 @@ START
 
 ;---------------------------------------------------------------
 ; Turn off disk drive motor
+; x register has the slot offset for example $60 for slot 6
+; in an Apple II emulator (AppleTS Studio) x may be 0, and the code will hang
+; so in case of x == 0 skip MOTOROFF code
 ;---------------------------------------------------------------
-
         ;lda     DRVMOTOR
-        lda     MOTOROFF,x
-
+        txa 
+        beq     SKIP_MOTOR
+        lda     MOTOROFF,x 
+SKIP_MOTOR
 ;===============================================================
 ; INITIALIZE GRAPHICS
 ;
@@ -271,10 +275,12 @@ INPUT
 
         ldy     #1
         ldx     KBD
-        ; stx     KBDSTRB
+        bpl     INPUT_DONE
+        bit     KBDSTRB
 
         lda     DX
         bne     CHECK_UP    ; Only check horizontals if moving vertically
+
 
         cpx     #136
         bne     CHECK_RIGHT
@@ -450,18 +456,6 @@ COLLISION
 WIN     jsr     BELL
         jmp     BASIC
 
-COLLISION_DONE
-
-        jsr     UPDATE
-
-        lda     DE
-        jsr     WAIT
-
-        sta     CH       ; reset cursor to column 1 as A=0 
-
-        jmp     GAME
-
-
 ;========================================================
 ; END OF GAME LOOP
 ;========================================================
@@ -540,7 +534,7 @@ NEW_FRUIT
         ; Generate FY in range 4..36
         ;-------------------------------------------------------
 
-        txa
+        ; txa - generate pseudo random SY with FX eor SY to save 1 byte
         eor     SY,x
         and     #$1F
         adc     #4
@@ -564,4 +558,14 @@ DRAWFRUIT
         ldx     #RED
         stx     COLOR
         jsr     PLOT
-        bcc     COLLISION_DONE
+
+COLLISION_DONE
+
+        jsr     UPDATE
+
+        lda     DE
+        jsr     WAIT
+
+        sta     CH       ; reset cursor to column 1 as A=0 
+
+        jmp     GAME
