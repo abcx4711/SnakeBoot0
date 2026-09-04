@@ -1,14 +1,14 @@
 # Create 512 byte (1 Block) .hdv image from snake2.bin
 $bin = [System.IO.File]::ReadAllBytes("$PSScriptRoot\..\bin\snake2.bin")
 
-if ($bin.Length -gt 511) {
-    Write-Error "snake2.bin too big $($bin.Length) for 1 Block .hdv (max 511 Bytes + 1 Byte Header)!"
+if ($bin.Length -gt 512) {
+    Write-Error "snake2.bin too big $($bin.Length) for 1 Block .hdv (max 512 Bytes)!"
     exit 1
 }
 
 $hdv = New-Object byte[] 512
 $hdv[0] = 0x01
-[Array]::Copy($bin, 0, $hdv, 1, $bin.Length)
+[Array]::Copy($bin, 1, $hdv, 1, $bin.Length-1)
 [System.IO.File]::WriteAllBytes("$PSScriptRoot\..\disk\snake2.hdv", $hdv)
 
 

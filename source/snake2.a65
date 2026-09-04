@@ -28,10 +28,6 @@
 ;   - converted to 64tass-1.60.3243 assembler, Visual Studio Code and some Windows Powershell scripts
 ;---------------------------------------------------------------
 
-; Apple ROM will load 512 byte boot block to $0800 and starts code at address $0801
-; Smartport partitions have $#01 at position $0800
-        * =      $0801
-
 ; Hardware & Monitor
 KBD             =     $C000
 KBDSTRB         =     $C010
@@ -79,6 +75,26 @@ KEY_DOWN        = 138
 KEY_PAUSE       = 208
 KEY_BASIC       = 194
 
+normal_text .encode
+    .cdef " ~", $a0    ; Mappt ASCII $20 (' ') bis $7E ('~') fortlaufend ab $A0
+.endencode
+
+invers_text .encode
+    .cdef " ?", $20    ; Leerzeichen, Satzzeichen & Zahlen ($20-$3F) -> $20-$3F
+    .cdef "@@", $00    ; @ Zeichen ($40) -> $00
+    .cdef "AZ", $01    ; Großbuchstaben A-Z ($41-$5A) -> $01-$1A
+.endencode
+
+flash_text .encode
+    .cdef " ?", $60    ; Leerzeichen, Satzzeichen & Zahlen ($20-$3F) -> $60-$7F
+    .cdef "@_", $40    ; @, Großbuchstaben A-Z & Klammern ($40-$5F) -> $40-$5F
+.endencode
+
+; Apple ROM will load 512 byte boot block to $0800 and starts code at address $0801
+; Smartport partitions have $#01 at position $0800
+        * =      $0800
+
+        nop; 1 byte will be replaced later by 0x01 in .hdv image
 ;---------------------------------------------------------------
 ; Turn off disk drive motor not necessary in this version
 ;---------------------------------------------------------------
@@ -324,7 +340,7 @@ PRINT_AT
 PRINT_LOOP
         lda     ($FD),y
         beq     PRINT_DONE
-        ora     #$80
+        ;ora     #$80 ; text is already encoded in Apple II char format
         jsr     COUT
         iny
         jmp     PRINT_LOOP
@@ -332,8 +348,14 @@ PRINT_DONE
         rts
 
 ; STRINGS
+
+
+.encode flash_text
 MSG_GAMEOVER    .text "GAME OVER", $00
+.endencode
+
+.encode normal_text
 MSG_HELP        .text "USE ARROW KEYS/P=PAUSE/B=BASIC", $00
 MSG_NO_BASIC    .text "NO BASIC", $00
-
+.endencode 
 
