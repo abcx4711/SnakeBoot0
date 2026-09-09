@@ -68,26 +68,26 @@ SX              =     $3000
 SY              =     $3100
 
 ; Keycodes
-KEY_LEFT        = 136
-KEY_RIGHT       = 149
-KEY_UP          = 139
-KEY_DOWN        = 138
+KEY_LEFT        = 202
+KEY_RIGHT       = 204
+KEY_UP          = 201
+KEY_DOWN        = 205
 KEY_PAUSE       = 208
 KEY_BASIC       = 194
 
 normal_text .encode
-    .cdef " ~", $a0    ; Mappt ASCII $20 (' ') bis $7E ('~') fortlaufend ab $A0
+    .cdef " ~", $a0    ; Map chars from (' ') to $7E ('~') to $A0
 .endencode
 
 invers_text .encode
-    .cdef " ?", $20    ; Leerzeichen, Satzzeichen & Zahlen ($20-$3F) -> $20-$3F
-    .cdef "@@", $00    ; @ Zeichen ($40) -> $00
-    .cdef "AZ", $01    ; Großbuchstaben A-Z ($41-$5A) -> $01-$1A
+    .cdef " ?", $20    ; Chars ($20-$3F) -> $20-$3F
+    .cdef "@@", $00    ; @ ($40) -> $00
+    .cdef "AZ", $01    ; Uppercase A-Z ($41-$5A) -> $01-$1A
 .endencode
 
 flash_text .encode
-    .cdef " ?", $60    ; Leerzeichen, Satzzeichen & Zahlen ($20-$3F) -> $60-$7F
-    .cdef "@_", $40    ; @, Großbuchstaben A-Z & Klammern ($40-$5F) -> $40-$5F
+    .cdef " ?", $60    ; Chars ($20-$3F) -> $60-$7F
+    .cdef "@_", $40    ; @, Uppercase A-Z & () ($40-$5F) -> $40-$5F
 .endencode
 
 ; Apple ROM will load 512 byte boot block to $0800 and starts code at address $0801
@@ -125,12 +125,19 @@ START1
         jsr     VLINE
 
 ; HELP TEXT (Line 22, Col 4)
-        lda     #<MSG_HELP
+        lda     #<MSG_HELP1
         sta     $FD
-        lda     #>MSG_HELP
+        lda     #>MSG_HELP1
         sta     $FE
-        lda     #4
+        lda     #7
         ldy     #22
+        jsr     PRINT_AT
+        lda     #<MSG_HELP2
+        sta     $FD
+        lda     #>MSG_HELP2
+        sta     $FE
+        lda     #12
+        ldy     #23
         jsr     PRINT_AT
 
 ; INIT VARS
@@ -158,6 +165,10 @@ INPUT
         ldx     KBD
         bpl     INPUT_DONE
         bit     KBDSTRB
+
+        txa
+        and     #$DF ; to Uppercase
+        tax
 
         cpx     #KEY_PAUSE
         bne     CHECK_BASIC
@@ -355,7 +366,8 @@ MSG_GAMEOVER    .text "GAME OVER", $00
 .endencode
 
 .encode normal_text
-MSG_HELP        .text "USE ARROW KEYS/P=PAUSE/B=BASIC", $00
+MSG_HELP1        .text "E=UP D=DOWN J=LEFT L=RIGHT", $00
+MSG_HELP2        .text "P=PAUSE B=BASIC", $00
 MSG_NO_BASIC    .text "NO BASIC", $00
 .endencode 
 
