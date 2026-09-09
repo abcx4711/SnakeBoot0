@@ -82,6 +82,6 @@ on Windows and Visual Studion code check .vscode/tasks.json and then build
 ## Gameplay
 
 Use **A**, **Z**, and the arrow keys to control the snake for Version 1
-Use arrow keys to control the snake for Version 2
+Use keys I = Up M = Down J = Left L = Right to control the snake for Version 2
 
 Eat fruits for points.
